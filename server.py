@@ -112,6 +112,78 @@ def title_from_snippet(text: str) -> str:
     return short_text(title, 72) or "Untitled session"
 
 
+def compact_title(text: str) -> str:
+    normalized = title_from_snippet(text)
+    lower = normalized.lower()
+    terms: list[str] = []
+
+    domain_terms = [
+        ("oct", "OCT"),
+        ("mgead", "MGEAD"),
+        ("nas", "NAS"),
+        ("neural architecture search", "NAS"),
+        ("efficientnet", "EfficientNet"),
+        ("mobilenetv3", "MobileNetV3"),
+        ("rf-detr", "RF-DETR"),
+        ("benchread", "BenchReAD"),
+        ("vis", "VIS"),
+        ("auc", "AUC"),
+        ("f1", "F1"),
+        ("syncbn", "SyncBN"),
+        ("nccl", "NCCL"),
+        ("supernet", "Supernet"),
+        ("sandwich", "Sandwich Rule"),
+        ("nsga", "NSGA-II"),
+        ("pareto", "Pareto"),
+        ("ablation", "消融"),
+        ("latency", "延迟"),
+        ("variance", "方差"),
+    ]
+    for needle, label in domain_terms:
+        if needle in lower and label not in terms:
+            terms.append(label)
+
+    chinese_terms = [
+        ("异常检测", "异常检测"),
+        ("搜索方案", "搜索方案"),
+        ("方案", "方案"),
+        ("架构", "架构"),
+        ("泛化", "泛化"),
+        ("高方差", "高方差"),
+        ("方差", "方差"),
+        ("验证集", "验证集"),
+        ("训练", "训练"),
+        ("评估", "评估"),
+        ("消融", "消融"),
+        ("泄露", "泄露"),
+        ("恢复", "恢复"),
+        ("报错", "报错"),
+    ]
+    for needle, label in chinese_terms:
+        if needle in normalized and label not in terms:
+            terms.append(label)
+
+    if "nas" in lower and "方案" in normalized and "搜索方案" not in terms:
+        terms.append("搜索方案")
+    if "oct" in lower and "异常检测" in normalized and "OCT 异常检测" not in terms:
+        terms = [term for term in terms if term not in {"OCT", "异常检测"}]
+        terms.insert(0, "OCT 异常检测")
+
+    if 2 <= len(terms):
+        title = " ".join(terms[:6])
+        title = title.replace("OCT MGEAD NAS", "MGEAD-NAS")
+        return short_text(title, 42)
+
+    if re.search(r"[\u4e00-\u9fff]", normalized):
+        chunks = re.split(r"[，。；：:,.!?！？\n]", normalized)
+        chunks = [chunk.strip() for chunk in chunks if len(chunk.strip()) >= 4]
+        if chunks:
+            return short_text(chunks[0], 28)
+
+    words = re.findall(r"[A-Za-z][A-Za-z0-9+\-]*|[\u4e00-\u9fff]{2,}", normalized)
+    return short_text(" ".join(words[:8]), 48)
+
+
 def is_title_noise(text: str) -> bool:
     normalized = re.sub(r"\s+", " ", clean_markup(text)).strip().lower()
     if not normalized:
@@ -159,7 +231,7 @@ def build_display_title(path: Path, candidates: list[dict[str, Any]], first_ts: 
         return path.stem
     if candidates:
         best = max(candidates, key=lambda item: title_score(item.get("title", "")))
-        title = title_from_snippet(best.get("title", ""))
+        title = compact_title(best.get("title", ""))
     else:
         title = "Claude Code session"
     date = first_ts[:10] if first_ts else path.stem[:8]

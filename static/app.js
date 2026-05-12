@@ -6,6 +6,7 @@ const state = {
   nextOffset: null,
   lastQuery: "",
   loading: false,
+  lang: localStorage.getItem("ccl_lang") || "en",
 };
 
 const els = {
@@ -32,16 +33,136 @@ const els = {
   exportMdBtn: document.querySelector("#exportMdBtn"),
   exportHtmlBtn: document.querySelector("#exportHtmlBtn"),
   exportJsonBtn: document.querySelector("#exportJsonBtn"),
+  langToggleBtn: document.querySelector("#langToggleBtn"),
   eventTemplate: document.querySelector("#eventTemplate"),
 };
 
-const roleLabels = {
-  user: "用户",
-  assistant: "助手",
-  tool: "工具",
-  system: "系统",
-  unknown: "未知",
+const I18N = {
+  en: {
+    loadingData: "Loading data source...",
+    sidebarAria: "Session list",
+    sessionSearch: "Session Search",
+    sessionSearchPlaceholder: "title, session id, date, model",
+    sessionListAria: "Available JSONL sessions",
+    noSession: "No session selected",
+    readerTitle: "Claude Code JSONL Reader",
+    refresh: "Refresh sessions",
+    exportMd: "Export MD",
+    exportHtml: "Export HTML",
+    metricsAria: "Session metrics",
+    events: "Events",
+    tools: "Tools",
+    codeBlocks: "Code Blocks",
+    filtersAria: "Timeline filters",
+    fullTextSearch: "Full Text Search",
+    fullTextPlaceholder: "Search text, tool name, path, command",
+    role: "Role",
+    allRoles: "All roles",
+    user: "User",
+    assistant: "Assistant",
+    tool: "Tool",
+    system: "System",
+    unknown: "Unknown",
+    start: "Start",
+    end: "End",
+    toolTraces: "Tool traces",
+    meta: "Meta",
+    conversationMap: "Conversation Map",
+    roleChartAria: "Role distribution chart",
+    evidencePaths: "Evidence Paths",
+    topReferencedFiles: "Top referenced files",
+    timelineAria: "Conversation timeline",
+    selectSession: "Select a JSONL session",
+    selectSessionHint: "The reader will convert raw Claude Code records into a searchable natural-language timeline.",
+    loadMore: "Load more",
+    copyEvent: "Copy event text",
+    noSessions: "No sessions",
+    noSessionsHint: "No matching JSONL files were found.",
+    noTime: "no time",
+    eventUnit: "events",
+    toolUnit: "tools",
+    noUserTurns: "No user turns detected",
+    noUserTurnsHint: "Enable meta records or choose another session.",
+    noPaths: "No paths referenced yet",
+    unknownTime: "unknown",
+    parsed: "parsed",
+    matched: "matched",
+    toolCall: "Tool call",
+    toolResult: "Tool result",
+    noMatchingEvents: "No matching events",
+    noMatchingEventsHint: "Try clearing the search or widening the time range.",
+    copied: "Event copied",
+    loadFailed: "Load failed",
+    startupFailed: "Startup failed",
+    langButton: "中文",
+  },
+  zh: {
+    loadingData: "正在读取数据目录...",
+    sidebarAria: "会话列表",
+    sessionSearch: "会话搜索",
+    sessionSearchPlaceholder: "标题、session id、日期、模型",
+    sessionListAria: "可用 JSONL 会话",
+    noSession: "尚未选择会话",
+    readerTitle: "Claude Code 对话阅读器",
+    refresh: "刷新会话",
+    exportMd: "导出 MD",
+    exportHtml: "导出 HTML",
+    metricsAria: "会话指标",
+    events: "事件",
+    tools: "工具调用",
+    codeBlocks: "代码块",
+    filtersAria: "时间线筛选",
+    fullTextSearch: "全文搜索",
+    fullTextPlaceholder: "搜索正文、工具名、路径、命令",
+    role: "角色",
+    allRoles: "全部角色",
+    user: "用户",
+    assistant: "助手",
+    tool: "工具",
+    system: "系统",
+    unknown: "未知",
+    start: "开始",
+    end: "结束",
+    toolTraces: "工具记录",
+    meta: "元数据",
+    conversationMap: "会话地图",
+    roleChartAria: "角色分布图",
+    evidencePaths: "证据路径",
+    topReferencedFiles: "高频引用文件",
+    timelineAria: "对话时间线",
+    selectSession: "选择一个 JSONL 会话",
+    selectSessionHint: "阅读器会把原始 Claude Code 记录转换成可搜索的自然语言时间线。",
+    loadMore: "加载更多",
+    copyEvent: "复制事件文本",
+    noSessions: "没有会话",
+    noSessionsHint: "没有找到匹配的 JSONL 文件。",
+    noTime: "无时间",
+    eventUnit: "条事件",
+    toolUnit: "次工具",
+    noUserTurns: "没有检测到用户轮次",
+    noUserTurnsHint: "可以打开元数据，或选择其他会话。",
+    noPaths: "暂无引用路径",
+    unknownTime: "未知",
+    parsed: "已解析",
+    matched: "匹配",
+    toolCall: "工具调用",
+    toolResult: "工具结果",
+    noMatchingEvents: "没有匹配事件",
+    noMatchingEventsHint: "可以清空搜索，或放宽时间范围。",
+    copied: "事件文本已复制",
+    loadFailed: "加载失败",
+    startupFailed: "启动失败",
+    langButton: "EN",
+  },
 };
+
+function t(key) {
+  return (I18N[state.lang] && I18N[state.lang][key]) || I18N.en[key] || key;
+}
+
+function roleLabel(role) {
+  return t(role || "unknown");
+}
 
 const roleColors = {
   user: "#167c80",
@@ -94,6 +215,25 @@ function toast(message) {
   window.setTimeout(() => node.remove(), 1800);
 }
 
+function applyLanguage() {
+  document.documentElement.lang = state.lang === "zh" ? "zh-CN" : "en";
+  document.querySelectorAll("[data-i18n]").forEach((node) => {
+    node.textContent = t(node.dataset.i18n);
+  });
+  document.querySelectorAll("[data-i18n-attr]").forEach((node) => {
+    node.dataset.i18nAttr.split(";").forEach((pair) => {
+      const [attr, key] = pair.split(":");
+      if (attr && key) node.setAttribute(attr, t(key));
+    });
+  });
+  if (els.langToggleBtn) els.langToggleBtn.textContent = t("langButton");
+  renderSessions();
+  if (state.current) {
+    updateSummary(state.current);
+    drawRoleChart(state.current.summary);
+  }
+}
+
 function currentParams(offset = 0) {
   const params = new URLSearchParams();
   params.set("id", state.selectedId || "");
@@ -124,7 +264,7 @@ function renderSessions() {
   });
 
   if (!filtered.length) {
-    els.sessionList.innerHTML = `<div class="empty-copy"><strong>没有会话</strong><span>没有找到匹配的 JSONL 文件。</span></div>`;
+    els.sessionList.innerHTML = `<div class="empty-copy"><strong>${t("noSessions")}</strong><span>${t("noSessionsHint")}</span></div>`;
     return;
   }
 
@@ -136,12 +276,12 @@ function renderSessions() {
       <span class="session-name">${escapeHtml(session.displayTitle || session.name)}</span>
       <span class="session-id">${escapeHtml(session.id)}</span>
       <span class="session-meta">
-        <span>${escapeHtml(session.firstTimestamp || "无时间")}</span>
+        <span>${escapeHtml(session.firstTimestamp || t("noTime"))}</span>
         <span>${formatBytes(session.size)}</span>
       </span>
       <span class="session-meta">
-        <span>${formatNumber(session.eventCount)} 条事件</span>
-        <span>${formatNumber(session.toolCalls)} 次工具</span>
+        <span>${formatNumber(session.eventCount)} ${t("eventUnit")}</span>
+        <span>${formatNumber(session.toolCalls)} ${t("toolUnit")}</span>
       </span>
     `;
     button.addEventListener("click", () => selectSession(session.id));
@@ -152,9 +292,9 @@ function renderSessions() {
 function setMetrics(summary) {
   const tokenTotal = Object.values(summary.tokenUsage || {}).reduce((acc, value) => acc + Number(value || 0), 0);
   const values = [
-    ["事件", summary.eventCount],
-    ["工具调用", summary.toolCalls],
-    ["代码块", summary.codeBlocks],
+    [t("events"), summary.eventCount],
+    [t("tools"), summary.toolCalls],
+    [t("codeBlocks"), summary.codeBlocks],
     ["Tokens", tokenTotal],
   ];
   els.metricsStrip.innerHTML = values
@@ -194,7 +334,7 @@ function drawRoleChart(summary) {
     ctx.fillStyle = roleColors[role] || roleColors.unknown;
     ctx.fillRect(legendX, 80, 10, 10);
     ctx.fillStyle = "#44505d";
-    const label = `${roleLabels[role] || role}: ${count}`;
+    const label = `${roleLabel(role)}: ${count}`;
     ctx.fillText(label, legendX + 15, 85);
     legendX += ctx.measureText(label).width + 38;
   }
@@ -203,7 +343,7 @@ function drawRoleChart(summary) {
 function renderChapters(summary) {
   const chapters = summary.chapters || [];
   if (!chapters.length) {
-    els.chapterList.innerHTML = `<div class="chapter-item"><strong>没有检测到用户轮次</strong><span>可以打开元数据，或选择其他会话。</span></div>`;
+    els.chapterList.innerHTML = `<div class="chapter-item"><strong>${t("noUserTurns")}</strong><span>${t("noUserTurnsHint")}</span></div>`;
     return;
   }
   els.chapterList.innerHTML = chapters
@@ -219,7 +359,7 @@ function renderChapters(summary) {
 function renderFiles(summary) {
   const files = summary.topFiles || [];
   if (!files.length) {
-    els.fileList.innerHTML = `<div class="file-item"><code>暂无引用路径</code><span>0</span></div>`;
+    els.fileList.innerHTML = `<div class="file-item"><code>${t("noPaths")}</code><span>0</span></div>`;
     return;
   }
   els.fileList.innerHTML = files
@@ -231,8 +371,14 @@ function updateSummary(data) {
   const summary = data.summary;
   state.current = data;
   els.sessionTitle.textContent = summary.displayTitle || summary.name;
-  els.sessionRange.textContent = `${summary.firstTimestamp || "未知"} 至 ${summary.lastTimestamp || "未知"} · 已解析 ${summary.eventCount} 条 · ${summary.id}`;
-  els.matchedCount.textContent = `匹配 ${formatNumber(data.matched)} 条`;
+  const from = summary.firstTimestamp || t("unknownTime");
+  const to = summary.lastTimestamp || t("unknownTime");
+  els.sessionRange.textContent = state.lang === "zh"
+    ? `${from} 至 ${to} · ${t("parsed")} ${summary.eventCount} 条 · ${summary.id}`
+    : `${from} to ${to} · ${summary.eventCount} ${t("parsed")} · ${summary.id}`;
+  els.matchedCount.textContent = state.lang === "zh"
+    ? `${t("matched")} ${formatNumber(data.matched)} 条`
+    : `${formatNumber(data.matched)} ${t("matched")}`;
   setMetrics(summary);
   drawRoleChart(summary);
   renderChapters(summary);
@@ -476,7 +622,7 @@ function renderBlock(block) {
     details.className = "tool-block";
     if (block.kind === "tool_use") details.open = true;
     const summary = document.createElement("summary");
-    summary.textContent = block.kind === "tool_use" ? `工具调用: ${block.title || block.tool || "unknown"}` : "工具结果";
+    summary.textContent = block.kind === "tool_use" ? `${t("toolCall")}: ${block.title || block.tool || "unknown"}` : t("toolResult");
     const pre = document.createElement("pre");
     pre.textContent = text;
     details.append(summary, pre);
@@ -493,7 +639,7 @@ function renderEvents(events, append = false) {
   }
   if (!events.length && !append) {
     els.timeline.className = "timeline empty-state";
-    els.timeline.innerHTML = `<div class="empty-copy"><strong>没有匹配事件</strong><span>可以清空搜索，或放宽时间范围。</span></div>`;
+    els.timeline.innerHTML = `<div class="empty-copy"><strong>${t("noMatchingEvents")}</strong><span>${t("noMatchingEventsHint")}</span></div>`;
     return;
   }
 
@@ -503,7 +649,7 @@ function renderEvents(events, append = false) {
     const pill = node.querySelector(".role-pill");
     const role = event.role || "unknown";
     pill.classList.add(`role-${role}`);
-    pill.textContent = roleLabels[role] || role;
+    pill.textContent = roleLabel(role);
     node.querySelector("time").textContent = event.timestamp.local || `line ${event.line}`;
 
     const content = node.querySelector(".event-content");
@@ -520,7 +666,7 @@ function renderEvents(events, append = false) {
 
     node.querySelector(".event-copy").addEventListener("click", async () => {
       await navigator.clipboard.writeText(eventToPlainText(event));
-      toast("事件文本已复制");
+      toast(t("copied"));
     });
     els.timeline.appendChild(node);
   }
@@ -538,7 +684,7 @@ async function loadEvents(offset = 0, append = false) {
     els.loadMoreBtn.hidden = data.nextOffset === null;
   } catch (error) {
     els.timeline.className = "timeline empty-state";
-    els.timeline.innerHTML = `<div class="empty-copy"><strong>加载失败</strong><span>${escapeHtml(error.message)}</span></div>`;
+    els.timeline.innerHTML = `<div class="empty-copy"><strong>${t("loadFailed")}</strong><span>${escapeHtml(error.message)}</span></div>`;
   } finally {
     state.loading = false;
     els.loadMoreBtn.disabled = false;
@@ -585,6 +731,12 @@ function attachEvents() {
   els.includeSystem.addEventListener("change", reload);
   els.includeMeta.addEventListener("change", reload);
   els.refreshBtn.addEventListener("click", () => refreshSessions().catch((error) => toast(error.message)));
+  els.langToggleBtn.addEventListener("click", () => {
+    state.lang = state.lang === "en" ? "zh" : "en";
+    localStorage.setItem("ccl_lang", state.lang);
+    applyLanguage();
+    if (state.current) renderEvents(state.current.events, false);
+  });
   els.loadMoreBtn.addEventListener("click", () => {
     if (state.nextOffset !== null) loadEvents(state.nextOffset, true);
   });
@@ -606,7 +758,8 @@ function attachEvents() {
 }
 
 attachEvents();
+applyLanguage();
 refreshSessions().catch((error) => {
   els.timeline.className = "timeline empty-state";
-  els.timeline.innerHTML = `<div class="empty-copy"><strong>启动失败</strong><span>${escapeHtml(error.message)}</span></div>`;
+  els.timeline.innerHTML = `<div class="empty-copy"><strong>${t("startupFailed")}</strong><span>${escapeHtml(error.message)}</span></div>`;
 });
