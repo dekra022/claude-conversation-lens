@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Claude Conversation Lens</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="Session list">
+      <div class="brand-row">
+        <div class="brand-mark">CL</div>
+        <div>
+          <h1>Conversation Lens</h1>
+          <p id="dataDir">Loading data source...</p>
+        </div>
+      </div>
+
+      <div class="sidebar-tools">
+        <label class="input-label" for="sessionSearch">Session Search</label>
+        <input id="sessionSearch" class="text-input" type="search" placeholder="session id, date, model">
+      </div>
+
+      <nav id="sessionList" class="session-list" aria-label="Available JSONL sessions"></nav>
+    </aside>
+
+    <main class="workspace">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow" id="sessionRange">No session selected</p>
+          <h2 id="sessionTitle">Claude Code JSONL Reader</h2>
+        </div>
+        <div class="topbar-actions">
+          <button class="icon-button" id="refreshBtn" type="button" title="Refresh sessions" aria-label="Refresh sessions">↻</button>
+          <button class="command-button" id="exportMdBtn" type="button">Export MD</button>
+          <button class="command-button" id="exportHtmlBtn" type="button">Export HTML</button>
+          <button class="command-button secondary" id="exportJsonBtn" type="button">JSON</button>
+        </div>
+      </header>
+
+      <section class="metrics-strip" id="metricsStrip" aria-label="Session metrics">
+        <div><span>Events</span><strong>0</strong></div>
+        <div><span>Tools</span><strong>0</strong></div>
+        <div><span>Code Blocks</span><strong>0</strong></div>
+        <div><span>Tokens</span><strong>0</strong></div>
+      </section>
+
+      <section class="filters" aria-label="Timeline filters">
+        <div class="filter-group grow">
+          <label class="input-label" for="queryInput">Full Text Search</label>
+          <input id="queryInput" class="text-input" type="search" placeholder="Search text, tool name, path, command">
+        </div>
+        <div class="filter-group">
+          <label class="input-label" for="roleFilter">Role</label>
+          <select id="roleFilter" class="text-input">
+            <option value="all">All roles</option>
+            <option value="user">User</option>
+            <option value="assistant">Assistant</option>
+            <option value="tool">Tool</option>
+            <option value="system">System</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label class="input-label" for="startInput">Start</label>
+          <input id="startInput" class="text-input" type="datetime-local">
+        </div>
+        <div class="filter-group">
+          <label class="input-label" for="endInput">End</label>
+          <input id="endInput" class="text-input" type="datetime-local">
+        </div>
+        <div class="filter-toggles">
+          <label><input id="includeTools" type="checkbox" checked> Tool traces</label>
+          <label><input id="includeSystem" type="checkbox" checked> System</label>
+          <label><input id="includeMeta" type="checkbox"> Meta</label>
+        </div>
+      </section>
+
+      <section class="insights">
+        <div class="panel overview-panel">
+          <div class="panel-header">
+            <h3>Conversation Map</h3>
+            <span id="matchedCount">0 matched</span>
+          </div>
+          <canvas id="roleChart" width="680" height="120" aria-label="Role distribution chart"></canvas>
+          <div id="chapterList" class="chapter-list"></div>
+        </div>
+        <div class="panel file-panel">
+          <div class="panel-header">
+            <h3>Evidence Paths</h3>
+            <span>Top referenced files</span>
+          </div>
+          <div id="fileList" class="file-list"></div>
+        </div>
+      </section>
+
+      <section class="timeline-section" aria-label="Conversation timeline">
+        <div id="timeline" class="timeline empty-state">
+          <div class="empty-copy">
+            <strong>Select a JSONL session</strong>
+            <span>The reader will convert raw Claude Code records into a searchable natural-language timeline.</span>
+          </div>
+        </div>
+        <button id="loadMoreBtn" class="load-more" type="button" hidden>Load more</button>
+      </section>
+    </main>
+  </div>
+
+  <template id="eventTemplate">
+    <article class="event">
+      <div class="event-rail"><span></span></div>
+      <div class="event-body">
+        <header class="event-header">
+          <div>
+            <span class="role-pill"></span>
+            <time></time>
+          </div>
+          <button class="event-copy" type="button" title="Copy event text" aria-label="Copy event text">⧉</button>
+        </header>
+        <div class="event-content"></div>
+      </div>
+    </article>
+  </template>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
