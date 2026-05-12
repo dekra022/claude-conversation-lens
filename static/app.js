@@ -36,11 +36,11 @@ const els = {
 };
 
 const roleLabels = {
-  user: "User",
-  assistant: "Assistant",
-  tool: "Tool",
-  system: "System",
-  unknown: "Unknown",
+  user: "用户",
+  assistant: "助手",
+  tool: "工具",
+  system: "系统",
+  unknown: "未知",
 };
 
 const roleColors = {
@@ -124,7 +124,7 @@ function renderSessions() {
   });
 
   if (!filtered.length) {
-    els.sessionList.innerHTML = `<div class="empty-copy"><strong>No sessions</strong><span>No matching JSONL files were found.</span></div>`;
+    els.sessionList.innerHTML = `<div class="empty-copy"><strong>没有会话</strong><span>没有找到匹配的 JSONL 文件。</span></div>`;
     return;
   }
 
@@ -133,14 +133,15 @@ function renderSessions() {
     button.className = `session-card${session.id === state.selectedId ? " active" : ""}`;
     button.type = "button";
     button.innerHTML = `
-      <span class="session-name">${escapeHtml(session.name)}</span>
+      <span class="session-name">${escapeHtml(session.displayTitle || session.name)}</span>
+      <span class="session-id">${escapeHtml(session.id)}</span>
       <span class="session-meta">
-        <span>${escapeHtml(session.firstTimestamp || "no time")}</span>
+        <span>${escapeHtml(session.firstTimestamp || "无时间")}</span>
         <span>${formatBytes(session.size)}</span>
       </span>
       <span class="session-meta">
-        <span>${formatNumber(session.eventCount)} events</span>
-        <span>${formatNumber(session.toolCalls)} tools</span>
+        <span>${formatNumber(session.eventCount)} 条事件</span>
+        <span>${formatNumber(session.toolCalls)} 次工具</span>
       </span>
     `;
     button.addEventListener("click", () => selectSession(session.id));
@@ -151,9 +152,9 @@ function renderSessions() {
 function setMetrics(summary) {
   const tokenTotal = Object.values(summary.tokenUsage || {}).reduce((acc, value) => acc + Number(value || 0), 0);
   const values = [
-    ["Events", summary.eventCount],
-    ["Tools", summary.toolCalls],
-    ["Code Blocks", summary.codeBlocks],
+    ["事件", summary.eventCount],
+    ["工具调用", summary.toolCalls],
+    ["代码块", summary.codeBlocks],
     ["Tokens", tokenTotal],
   ];
   els.metricsStrip.innerHTML = values
@@ -202,7 +203,7 @@ function drawRoleChart(summary) {
 function renderChapters(summary) {
   const chapters = summary.chapters || [];
   if (!chapters.length) {
-    els.chapterList.innerHTML = `<div class="chapter-item"><strong>No user turns detected</strong><span>Enable meta records or choose another session.</span></div>`;
+    els.chapterList.innerHTML = `<div class="chapter-item"><strong>没有检测到用户轮次</strong><span>可以打开元数据，或选择其他会话。</span></div>`;
     return;
   }
   els.chapterList.innerHTML = chapters
@@ -218,7 +219,7 @@ function renderChapters(summary) {
 function renderFiles(summary) {
   const files = summary.topFiles || [];
   if (!files.length) {
-    els.fileList.innerHTML = `<div class="file-item"><code>No paths referenced yet</code><span>0</span></div>`;
+    els.fileList.innerHTML = `<div class="file-item"><code>暂无引用路径</code><span>0</span></div>`;
     return;
   }
   els.fileList.innerHTML = files
@@ -229,9 +230,9 @@ function renderFiles(summary) {
 function updateSummary(data) {
   const summary = data.summary;
   state.current = data;
-  els.sessionTitle.textContent = summary.name;
-  els.sessionRange.textContent = `${summary.firstTimestamp || "unknown"} to ${summary.lastTimestamp || "unknown"} · ${summary.eventCount} parsed`;
-  els.matchedCount.textContent = `${formatNumber(data.matched)} matched`;
+  els.sessionTitle.textContent = summary.displayTitle || summary.name;
+  els.sessionRange.textContent = `${summary.firstTimestamp || "未知"} 至 ${summary.lastTimestamp || "未知"} · 已解析 ${summary.eventCount} 条 · ${summary.id}`;
+  els.matchedCount.textContent = `匹配 ${formatNumber(data.matched)} 条`;
   setMetrics(summary);
   drawRoleChart(summary);
   renderChapters(summary);
@@ -475,7 +476,7 @@ function renderBlock(block) {
     details.className = "tool-block";
     if (block.kind === "tool_use") details.open = true;
     const summary = document.createElement("summary");
-    summary.textContent = block.kind === "tool_use" ? `Tool call: ${block.title || block.tool || "unknown"}` : "Tool result";
+    summary.textContent = block.kind === "tool_use" ? `工具调用: ${block.title || block.tool || "unknown"}` : "工具结果";
     const pre = document.createElement("pre");
     pre.textContent = text;
     details.append(summary, pre);
@@ -492,7 +493,7 @@ function renderEvents(events, append = false) {
   }
   if (!events.length && !append) {
     els.timeline.className = "timeline empty-state";
-    els.timeline.innerHTML = `<div class="empty-copy"><strong>No matching events</strong><span>Try clearing the search or widening the time range.</span></div>`;
+    els.timeline.innerHTML = `<div class="empty-copy"><strong>没有匹配事件</strong><span>可以清空搜索，或放宽时间范围。</span></div>`;
     return;
   }
 
@@ -519,7 +520,7 @@ function renderEvents(events, append = false) {
 
     node.querySelector(".event-copy").addEventListener("click", async () => {
       await navigator.clipboard.writeText(eventToPlainText(event));
-      toast("Event copied");
+      toast("事件文本已复制");
     });
     els.timeline.appendChild(node);
   }
@@ -537,7 +538,7 @@ async function loadEvents(offset = 0, append = false) {
     els.loadMoreBtn.hidden = data.nextOffset === null;
   } catch (error) {
     els.timeline.className = "timeline empty-state";
-    els.timeline.innerHTML = `<div class="empty-copy"><strong>Load failed</strong><span>${escapeHtml(error.message)}</span></div>`;
+    els.timeline.innerHTML = `<div class="empty-copy"><strong>加载失败</strong><span>${escapeHtml(error.message)}</span></div>`;
   } finally {
     state.loading = false;
     els.loadMoreBtn.disabled = false;
@@ -607,5 +608,5 @@ function attachEvents() {
 attachEvents();
 refreshSessions().catch((error) => {
   els.timeline.className = "timeline empty-state";
-  els.timeline.innerHTML = `<div class="empty-copy"><strong>Startup failed</strong><span>${escapeHtml(error.message)}</span></div>`;
+  els.timeline.innerHTML = `<div class="empty-copy"><strong>启动失败</strong><span>${escapeHtml(error.message)}</span></div>`;
 });

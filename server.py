@@ -38,6 +38,7 @@ TAG_REPLACEMENTS = [
 
 WINDOWS_PATH_RE = re.compile(r"[A-Za-z]:\\[^\s\"'<>|]+")
 UNIX_PATH_RE = re.compile(r"(?<![A-Za-z0-9_])/(?:[\w.\-]+/)+[\w.\-]+")
+UUID_STEM_RE = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
 
 
 def parse_iso_timestamp(value: str | None) -> dict[str, Any]:
@@ -90,6 +91,79 @@ def short_text(text: str, limit: int = 220) -> str:
     if len(text) <= limit:
         return text
     return text[: limit - 1].rstrip() + "..."
+
+
+def title_from_snippet(text: str) -> str:
+    text = clean_markup(text)
+    text = re.sub(r"```.*?```", " ", text, flags=re.S)
+    text = re.sub(r"^#+\s*", "", text.strip())
+    candidates = []
+    for line in text.splitlines():
+        line = line.strip(" -#\t")
+        if not line:
+            continue
+        if line.startswith(("Command:", "Args:", "Message:")):
+            continue
+        candidates.append(line)
+    title = candidates[0] if candidates else text
+    title = re.sub(r"\*\*([^*]+)\*\*", r"\1", title)
+    title = re.sub(r"`([^`]+)`", r"\1", title)
+    title = re.sub(r"\s+", " ", title).strip(" .。")
+    return short_text(title, 72) or "Untitled session"
+
+
+def is_title_noise(text: str) -> bool:
+    normalized = re.sub(r"\s+", " ", clean_markup(text)).strip().lower()
+    if not normalized:
+        return True
+    noise_prefixes = (
+        "command:",
+        "message: clear",
+        "args:",
+        "file created successfully",
+        "file has been updated",
+        "local-command",
+        "[private reasoning omitted]",
+    )
+    if normalized in {"/clear", "clear", "command: /clear message: clear args:"}:
+        return True
+    return any(normalized.startswith(prefix) for prefix in noise_prefixes)
+
+
+def title_score(text: str) -> int:
+    normalized = re.sub(r"\s+", " ", clean_markup(text)).strip()
+    if is_title_noise(normalized):
+        return -100
+    score = 0
+    if re.search(r"[\u4e00-\u9fff]", normalized):
+        score += 30
+    if re.search(r"\b(why|how|what|analyze|build|implement|fix|design|search|train|evaluate)\b", normalized, re.I):
+        score += 14
+    if re.search(r"(分析|实现|搜索|训练|评估|方案|问题|架构|实验|结果)", normalized):
+        score += 18
+    if normalized.startswith(("#", "I need to", "Looking at", "基于", "现在", "请", "你")):
+        score += 12
+    if 24 <= len(normalized) <= 180:
+        score += 10
+    if re.search(r"(^|\s)(python|torchrun|cuda_visible_devices|cd |ls |find |git |npm |pip )", normalized, re.I):
+        score -= 35
+    if re.search(r"^[{\[]", normalized) or "file_path" in normalized:
+        score -= 30
+    if re.search(r"[A-Za-z]:\\|/Users/|~/", normalized):
+        score -= 20
+    return score
+
+
+def build_display_title(path: Path, candidates: list[dict[str, Any]], first_ts: str | None) -> str:
+    if not UUID_STEM_RE.match(path.stem):
+        return path.stem
+    if candidates:
+        best = max(candidates, key=lambda item: title_score(item.get("title", "")))
+        title = title_from_snippet(best.get("title", ""))
+    else:
+        title = "Claude Code session"
+    date = first_ts[:10] if first_ts else path.stem[:8]
+    return f"{title} · {date}"
 
 
 def detect_language(tool_name: str, text: str) -> str:
@@ -335,6 +409,7 @@ def summarize_session(path: Path) -> dict[str, Any]:
     cwd: Counter[str] = Counter()
     files: Counter[str] = Counter()
     chapters: list[dict[str, Any]] = []
+    title_candidates: list[str] = []
     first_ts = None
     last_ts = None
     invalid_lines = 0
@@ -381,10 +456,23 @@ def summarize_session(path: Path) -> dict[str, Any]:
                     "title": short_text(event["snippet"], 120),
                 }
             )
+        if (
+            event["role"] in {"user", "assistant"}
+            and not event.get("isMeta")
+            and event.get("snippet")
+            and not is_title_noise(event["snippet"])
+            and len(title_candidates) < 24
+        ):
+            title_candidates.append(event["snippet"])
 
     summary = {
         "id": path.name,
         "name": path.stem,
+        "displayTitle": build_display_title(
+            path,
+            [{"title": item, "time": first_ts, "line": 0} for item in title_candidates] or chapters,
+            first_ts,
+        ),
         "path": str(path),
         "size": stat.st_size,
         "modified": datetime.fromtimestamp(stat.st_mtime, LOCAL_TZ).strftime("%Y-%m-%d %H:%M:%S"),

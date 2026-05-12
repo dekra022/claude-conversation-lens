@@ -8,100 +8,100 @@
 </head>
 <body>
   <div class="app-shell">
-    <aside class="sidebar" aria-label="Session list">
+    <aside class="sidebar" aria-label="会话列表">
       <div class="brand-row">
         <div class="brand-mark">CL</div>
         <div>
           <h1>Conversation Lens</h1>
-          <p id="dataDir">Loading data source...</p>
+          <p id="dataDir">正在读取数据目录...</p>
         </div>
       </div>
 
       <div class="sidebar-tools">
-        <label class="input-label" for="sessionSearch">Session Search</label>
-        <input id="sessionSearch" class="text-input" type="search" placeholder="session id, date, model">
+        <label class="input-label" for="sessionSearch">会话搜索</label>
+        <input id="sessionSearch" class="text-input" type="search" placeholder="标题、session id、日期、模型">
       </div>
 
-      <nav id="sessionList" class="session-list" aria-label="Available JSONL sessions"></nav>
+      <nav id="sessionList" class="session-list" aria-label="可用 JSONL 会话"></nav>
     </aside>
 
     <main class="workspace">
       <header class="topbar">
         <div>
-          <p class="eyebrow" id="sessionRange">No session selected</p>
-          <h2 id="sessionTitle">Claude Code JSONL Reader</h2>
+          <p class="eyebrow" id="sessionRange">尚未选择会话</p>
+          <h2 id="sessionTitle">Claude Code 对话阅读器</h2>
         </div>
         <div class="topbar-actions">
-          <button class="icon-button" id="refreshBtn" type="button" title="Refresh sessions" aria-label="Refresh sessions">↻</button>
-          <button class="command-button" id="exportMdBtn" type="button">Export MD</button>
-          <button class="command-button" id="exportHtmlBtn" type="button">Export HTML</button>
+          <button class="icon-button" id="refreshBtn" type="button" title="刷新会话" aria-label="刷新会话">↻</button>
+          <button class="command-button" id="exportMdBtn" type="button">导出 MD</button>
+          <button class="command-button" id="exportHtmlBtn" type="button">导出 HTML</button>
           <button class="command-button secondary" id="exportJsonBtn" type="button">JSON</button>
         </div>
       </header>
 
-      <section class="metrics-strip" id="metricsStrip" aria-label="Session metrics">
-        <div><span>Events</span><strong>0</strong></div>
-        <div><span>Tools</span><strong>0</strong></div>
-        <div><span>Code Blocks</span><strong>0</strong></div>
+      <section class="metrics-strip" id="metricsStrip" aria-label="会话指标">
+        <div><span>事件</span><strong>0</strong></div>
+        <div><span>工具调用</span><strong>0</strong></div>
+        <div><span>代码块</span><strong>0</strong></div>
         <div><span>Tokens</span><strong>0</strong></div>
       </section>
 
-      <section class="filters" aria-label="Timeline filters">
+      <section class="filters" aria-label="时间线筛选">
         <div class="filter-group grow">
-          <label class="input-label" for="queryInput">Full Text Search</label>
-          <input id="queryInput" class="text-input" type="search" placeholder="Search text, tool name, path, command">
+          <label class="input-label" for="queryInput">全文搜索</label>
+          <input id="queryInput" class="text-input" type="search" placeholder="搜索正文、工具名、路径、命令">
         </div>
         <div class="filter-group">
-          <label class="input-label" for="roleFilter">Role</label>
+          <label class="input-label" for="roleFilter">角色</label>
           <select id="roleFilter" class="text-input">
-            <option value="all">All roles</option>
-            <option value="user">User</option>
-            <option value="assistant">Assistant</option>
-            <option value="tool">Tool</option>
-            <option value="system">System</option>
+            <option value="all">全部角色</option>
+            <option value="user">用户</option>
+            <option value="assistant">助手</option>
+            <option value="tool">工具</option>
+            <option value="system">系统</option>
           </select>
         </div>
         <div class="filter-group">
-          <label class="input-label" for="startInput">Start</label>
+          <label class="input-label" for="startInput">开始</label>
           <input id="startInput" class="text-input" type="datetime-local">
         </div>
         <div class="filter-group">
-          <label class="input-label" for="endInput">End</label>
+          <label class="input-label" for="endInput">结束</label>
           <input id="endInput" class="text-input" type="datetime-local">
         </div>
         <div class="filter-toggles">
-          <label><input id="includeTools" type="checkbox" checked> Tool traces</label>
-          <label><input id="includeSystem" type="checkbox" checked> System</label>
-          <label><input id="includeMeta" type="checkbox"> Meta</label>
+          <label><input id="includeTools" type="checkbox" checked> 工具记录</label>
+          <label><input id="includeSystem" type="checkbox" checked> 系统</label>
+          <label><input id="includeMeta" type="checkbox"> 元数据</label>
         </div>
       </section>
 
       <section class="insights">
         <div class="panel overview-panel">
           <div class="panel-header">
-            <h3>Conversation Map</h3>
-            <span id="matchedCount">0 matched</span>
+            <h3>会话地图</h3>
+            <span id="matchedCount">匹配 0 条</span>
           </div>
-          <canvas id="roleChart" width="680" height="120" aria-label="Role distribution chart"></canvas>
+          <canvas id="roleChart" width="680" height="120" aria-label="角色分布图"></canvas>
           <div id="chapterList" class="chapter-list"></div>
         </div>
         <div class="panel file-panel">
           <div class="panel-header">
-            <h3>Evidence Paths</h3>
-            <span>Top referenced files</span>
+            <h3>证据路径</h3>
+            <span>高频引用文件</span>
           </div>
           <div id="fileList" class="file-list"></div>
         </div>
       </section>
 
-      <section class="timeline-section" aria-label="Conversation timeline">
+      <section class="timeline-section" aria-label="对话时间线">
         <div id="timeline" class="timeline empty-state">
           <div class="empty-copy">
-            <strong>Select a JSONL session</strong>
-            <span>The reader will convert raw Claude Code records into a searchable natural-language timeline.</span>
+            <strong>选择一个 JSONL 会话</strong>
+            <span>阅读器会把原始 Claude Code 记录转换成可搜索的自然语言时间线。</span>
           </div>
         </div>
-        <button id="loadMoreBtn" class="load-more" type="button" hidden>Load more</button>
+        <button id="loadMoreBtn" class="load-more" type="button" hidden>加载更多</button>
       </section>
     </main>
   </div>
@@ -115,7 +115,7 @@
             <span class="role-pill"></span>
             <time></time>
           </div>
-          <button class="event-copy" type="button" title="Copy event text" aria-label="Copy event text">⧉</button>
+          <button class="event-copy" type="button" title="复制事件文本" aria-label="复制事件文本">⧉</button>
         </header>
         <div class="event-content"></div>
       </div>
